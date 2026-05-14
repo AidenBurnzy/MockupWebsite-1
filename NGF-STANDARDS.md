@@ -274,6 +274,17 @@ Add `data-ngf-aspect` to lock the editor's upload cropper to a specific ratio �
 - No extra annotation needed — the convention is implicit. Just use `_alt` in your fallback lookup and the editor handles the rest.
 - For repeatable items: `content['team.members.0.image_alt']`, `content['team.members.1.image_alt']`, etc.
 
+**Editor UX for image fields:**
+
+In edit mode, the bridge automatically renders a permanent "Replace photo" overlay button on every annotated image (>40×40px). No client action or annotation required — this is built into `NgfEditBridge.tsx`. The button:
+
+- Sits in the top-right of each image with a dark backdrop-blur background, legible on any photo
+- Skips logos / icons / sub-40px images
+- Clicks open the same upload popover the image-click flow does
+- Repositions on scroll/resize so it stays glued to its image
+
+This solves the discoverability problem: clients can't always tell that an image is clickable. The visible button is unambiguous. Sites get the new behavior automatically when their bridge is brought up to the canonical version.
+
 **Server-side image optimization (automatic):**
 
 Every uploaded raster image (JPEG / PNG / WebP) goes through a Sharp pipeline before storage:
