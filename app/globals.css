@@ -663,6 +663,15 @@
   /* Hero section gap tighter when stacked */
   .home-hero { gap: 24px; }
 
+  /* Hero copy — center all text on mobile */
+  .hero-copy { text-align: center; align-items: center; }
+
+  /* Hero eyebrow — smaller + tighter tracking so it stays on one line */
+  .hero-copy .eyebrow { font-size: 0.72rem; letter-spacing: 0.1em; }
+
+  /* Hero h1 — slightly smaller on mobile so hierarchy vs eyebrow is clear */
+  .hero-copy h1 { font-size: clamp(1.75rem, 7vw, 2.4rem); }
+
   /* Hero image — cap height so it doesn't eat the viewport */
   .hero-static {
     aspect-ratio: 3 / 2;

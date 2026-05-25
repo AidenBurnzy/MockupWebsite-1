@@ -49,7 +49,7 @@ export default async function HomePage() {
         }}
       >
         {/* Hero copy */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="hero-copy" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <p
             className="eyebrow"
             data-ngf-field="hero.eyebrow"
