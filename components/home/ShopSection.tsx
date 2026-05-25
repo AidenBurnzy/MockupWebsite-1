@@ -25,15 +25,15 @@ export function ShopSection({ bestSellers, products, bundles, content }: ShopSec
   ]
 
   const tabStyle = (id: Tab): React.CSSProperties => ({
-    padding: '10px 28px',
+    padding: '10px 20px',
     borderRadius: '999px',
     border: 'none',
     background: activeTab === id ? 'var(--ink)' : 'transparent',
     color: activeTab === id ? '#fff' : 'var(--muted)',
     fontFamily: 'inherit',
-    fontSize: '0.85rem',
+    fontSize: '0.82rem',
     fontWeight: 600,
-    letterSpacing: '0.08em',
+    letterSpacing: '0.06em',
     textTransform: 'uppercase',
     cursor: 'pointer',
     transition: 'all 180ms ease',
@@ -127,7 +127,7 @@ export function ShopSection({ bestSellers, products, bundles, content }: ShopSec
       {/* ── Browse by metal & type ── */}
       <div style={{ marginTop: '48px', borderTop: '1px solid var(--border)', paddingTop: '40px', textAlign: 'center' }}>
         <p className="eyebrow" style={{ margin: '0 auto 10px', textAlign: 'center' }}>Filter</p>
-        <h2 style={{ margin: '0 auto 28px', textAlign: 'center', whiteSpace: 'nowrap' }}>Browse by metal &amp; type</h2>
+        <h2 className="shop-filter-heading" style={{ margin: '0 auto 28px', textAlign: 'center' }}>Browse by metal &amp; type</h2>
         <div style={{ textAlign: 'left' }}>
           <ShopByCategory products={products} />
         </div>

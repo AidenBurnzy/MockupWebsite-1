@@ -176,17 +176,7 @@ export function Header({ announcementText }: HeaderProps) {
         </div>
 
         {/* ── Main header ── */}
-        <header
-          className="flex items-center justify-between px-7"
-          style={{
-            height:              'var(--header-height)',
-            background:          'rgba(247, 244, 239, 0.95)',
-            backdropFilter:      'blur(12px)',
-            WebkitBackdropFilter:'blur(12px)',
-            borderBottom:        '1px solid var(--border)',
-            boxShadow:           '0 10px 32px rgba(0,0,0,0.05)',
-          }}
-        >
+        <header className="header-inner">
           {/* Brand */}
           <Link href="/" className="flex items-center gap-3 shrink-0 brand-link">
             <Image
@@ -195,14 +185,14 @@ export function Header({ announcementText }: HeaderProps) {
               width={160}
               height={60}
               className="brand-logo"
-              style={{ height: '100%', maxHeight: '52px', width: 'auto', objectFit: 'contain' }}
+              style={{ height: '100%', width: 'auto', objectFit: 'contain' }}
               priority
             />
             <span className="sr-only">NOMA Fine Jewelry</span>
           </Link>
 
-          {/* Desktop nav */}
-          <nav aria-label="Primary" className="hidden md:block">
+          {/* Desktop nav — class controls visibility via CSS media query (not Tailwind) */}
+          <nav aria-label="Primary" className="desktop-nav">
             <ul className="flex items-center list-none" style={{ gap: '20px' }}>
               {navLinks.map(({ href, label }) => {
                 const isActive = activeHref === href
@@ -234,34 +224,18 @@ export function Header({ announcementText }: HeaderProps) {
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center" style={{ gap: '10px' }}>
-            <Link href="/cart" className="btn-solid" style={{ padding: '10px 18px', fontSize: '0.85rem' }}>
+          <div className="flex items-center" style={{ gap: '8px' }}>
+            <Link href="/cart" className="btn-solid header-cart">
               Cart{totalQty > 0 ? ` (${totalQty})` : ''}
             </Link>
             <button
-              className="md:hidden flex"
-              style={{
-                minWidth:      '64px',
-                height:        '38px',
-                padding:       '0 14px',
-                borderRadius:  '999px',
-                border:        '1px solid var(--border)',
-                background:    'rgba(255,255,255,0.6)',
-                alignItems:    'center',
-                justifyContent:'center',
-                cursor:        'pointer',
-                fontSize:      '0.78rem',
-                fontWeight:    '700',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color:         'var(--ink)',
-              }}
+              className="mobile-menu-btn"
               aria-label="Toggle navigation"
               aria-expanded={navOpen}
               aria-controls="mobile-nav"
               onClick={() => setNavOpen(v => !v)}
             >
-              Menu
+              {navOpen ? '✕' : '☰'}
             </button>
           </div>
         </header>

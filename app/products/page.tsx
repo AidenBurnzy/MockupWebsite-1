@@ -33,10 +33,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     <main style={{ padding: '0 0 120px' }}>
 
       {/* ── Products hero ── */}
-      <div
-        style={{ maxWidth: '1200px', margin: '0 auto', padding: '60px 32px 40px', textAlign: 'center' }}
-        id="shop"
-      >
+      <div className="products-hero-header" id="shop">
         <h1
           data-ngf-field="products.eyebrow"
           data-ngf-label="Page Headline"
@@ -58,7 +55,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       </div>
 
       {/* ── Product grid ── */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 32px 80px' }}>
+      <div className="products-grid-wrapper">
         <ProductGrid products={PRODUCTS} content={content} initialMetals={initialMetals} initialTypes={initialTypes} />
       </div>
 

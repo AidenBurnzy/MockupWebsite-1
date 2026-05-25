@@ -116,15 +116,14 @@ export function EngravingPreview({ eyebrow, headline, lede }: EngravingPreviewPr
   }, [computeFontSize])
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '80px 32px' }}>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '48px',
-          alignItems: 'center',
-        }}
-      >
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gap: '48px',
+        alignItems: 'center',
+      }}
+    >
         {/* Left: copy + controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <p
@@ -293,7 +292,7 @@ export function EngravingPreview({ eyebrow, headline, lede }: EngravingPreviewPr
             Preview
           </p>
         </div>
-      </div>
     </div>
   )
 }
+

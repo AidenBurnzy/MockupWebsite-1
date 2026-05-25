@@ -80,6 +80,7 @@ export default async function HomePage() {
           {/* Engraving callout — inline, no card */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <span
+              className="hero-engraving-tag"
               style={{
                 display: 'inline-flex', alignItems: 'center',
                 background: 'rgba(139,47,57,0.1)', color: 'var(--burgundy)',

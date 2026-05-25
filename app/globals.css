@@ -106,6 +106,11 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
+
+  /* Prevent double-tap zoom on interactive elements (common mobile issue) */
+  button, a, input, select, textarea, [role="button"] {
+    touch-action: manipulation;
+  }
 }
 
 /* ── Eyebrow label style ── */
@@ -291,12 +296,14 @@
 .mini-image {
   background: #f5f1ec;
   overflow: hidden;
+  height: 200px;
 }
 
 .mini-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: bottom center;
   display: block;
 }
 
@@ -535,19 +542,123 @@
 /* ── Hero section ── */
 .home-hero { gap: 40px; }
 
+/* ── Header layout (all sizing in CSS so mobile breakpoint can override) ── */
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  height: var(--header-height);
+  background: rgba(247, 244, 239, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.05);
+}
+
+/* ── Logo ── */
+.brand-logo { max-height: 52px; }
+
+/* ── Header cart button ── */
+.header-cart { padding: 10px 18px !important; font-size: 0.85rem !important; }
+
+/* ── Nav visibility (CSS media queries, not Tailwind — avoids Tailwind v4 class unreliability) ── */
+.desktop-nav    { display: none; }
+/* Mobile menu button — base styling (display toggled by visibility rules below) */
+.mobile-menu-btn {
+  height: 38px;
+  min-width: 60px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.6);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: var(--ink);
+  font-family: inherit;
+  line-height: 1;
+  display: flex;
+}
+
+/* ── Mobile compact control bar (filter pill + sort select) ── */
+.mobile-control-bar { display: none; }
+.desktop-sort-row { display: flex; }
+
+@media (min-width: 768px) {
+  .desktop-nav        { display: block; }
+  .mobile-menu-btn    { display: none; }
+  .mobile-control-bar { display: none; }
+  .desktop-sort-row   { display: flex; }
+}
+
+/* ── Best sellers grid (class-based so mobile breakpoint can override) ── */
+.best-sellers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 20px;
+}
+
+/* ── Product grid ── */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+/* Shop page cards are wider than home mini-cards — give images more height */
+.product-grid .mini-card { grid-template-rows: 280px auto; }
+.product-grid .mini-image { height: 280px; }
+
+/* ── Filter panel collapse (mobile) ── */
+.filter-toggle-btn { display: none; }
+.filter-groups-wrap { display: block; margin-bottom: 0; }
+
+/* ── Products page layout containers (responsive padding via class) ── */
+.products-hero-header {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 32px 40px;
+  text-align: center;
+}
+
+.products-grid-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 32px 80px;
+}
+
 /* ── Tablet breakpoint ── */
 @media (max-width: 768px) {
   .section { padding: 56px 24px; }
   .banner-sequence { gap: 32px; padding-right: 32px; }
   .category-groups { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .products-hero-header { padding: 48px 24px 32px; }
+  .products-grid-wrapper { padding: 0 24px 64px; }
 }
 
 /* ── Mobile breakpoint ── */
 @media (max-width: 640px) {
+  /* Compact header on mobile */
+  :root {
+    --banner-height: 36px;
+    --header-height: 58px;
+    --header-offset: 118px;
+    --mobile-menu-top: 98px;
+  }
+  .header-inner { padding: 0 16px; }
+  .brand-logo { max-height: 34px; }
+  .header-cart { padding: 8px 14px !important; font-size: 0.8rem !important; }
+  .mobile-menu-btn { min-width: 44px; width: 44px; height: 36px; padding: 0; font-size: 1.35rem; }
+
   .section { padding: 40px 18px; }
   h1 { font-size: clamp(1.9rem, 7vw, 2.6rem); }
   h2 { font-size: clamp(1.6rem, 5.5vw, 2.2rem); }
   h3 { font-size: clamp(1.1rem, 4vw, 1.3rem); }
+  /* Prevent any stray nowrap from blowing out the viewport */
+  h2, h3 { white-space: normal; word-break: break-word; }
 
   /* Hero section gap tighter when stacked */
   .home-hero { gap: 24px; }
@@ -564,8 +675,10 @@
     gap: 8px;
   }
 
-  /* Best sellers — tighter rows */
-  .mini-card { grid-template-rows: 160px auto; }
+  /* Best sellers — 2 columns + tighter rows */
+  .best-sellers-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .mini-card { grid-template-rows: auto auto; }
+  .mini-image { height: 160px; }
   .mini-body { padding: 12px; }
 
   /* Founder image — cap so it doesn't tower */
@@ -584,4 +697,29 @@
 
   /* Category browse strip */
   .category-strip-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Products page */
+  .products-hero-header { padding: 32px 18px 20px; }
+  .products-grid-wrapper { padding: 0 18px 48px; }
+
+  /* ShopSection filter header */
+  .shop-filter-heading { font-size: clamp(1.4rem, 5vw, 2rem) !important; }
+
+  /* Product grid — 2 columns on mobile */
+  .product-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+
+  /* Mobile control bar: filter pill + sort select, replaces separate rows */
+  .mobile-control-bar { display: flex; align-items: center; gap: 8px; }
+  /* Sort pills row (desktop only) — hidden on mobile */
+  .desktop-sort-row { display: none !important; }
+
+  /* Filter panel — collapsed behind toggle on mobile */
+  .filter-groups-wrap { display: none; }
+  .filter-groups-open { display: block !important; margin-top: 10px; }
+
+  /* Hero "Now Offering" badge — hide on mobile to reduce pill clutter */
+  .hero-engraving-tag { display: none !important; }
+
+  /* h1 — balance line breaks so no orphan single word on last line */
+  h1 { text-wrap: balance; }
 }

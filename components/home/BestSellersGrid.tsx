@@ -44,11 +44,7 @@ export function BestSellersGrid({ products, content }: BestSellersGridProps) {
     <>
       {/* ── Mini-grid ── */}
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-          gap: '20px',
-        }}
+        className="best-sellers-grid"
         data-ngf-group="bestSellers.items"
         data-ngf-item-label="Product"
         data-ngf-min-items="1"
