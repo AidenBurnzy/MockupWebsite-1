@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useCart } from '@/components/CartProvider'
 import type { ProductVariant } from '@/lib/site-data'
 
@@ -12,7 +12,7 @@ interface ProductModalProps {
   images?: string[]
   variants?: ProductVariant[]
   variantType?: string
-  imageOnly?: boolean   // desktop: show image carousel only, no product details
+  imageOnly?: boolean
   onClose: () => void
 }
 
@@ -22,42 +22,28 @@ export function ProductModal({
 }: ProductModalProps) {
   const { addItem } = useCart()
 
-  // Gallery
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
   const gallery = (images && images.length > 0) ? images : [image]
   const [selectedImg, setSelectedImg] = useState(0)
   const activeImage = gallery[selectedImg]
-
   const prevImg = () => setSelectedImg(i => (i - 1 + gallery.length) % gallery.length)
   const nextImg = () => setSelectedImg(i => (i + 1) % gallery.length)
 
-  // Variant selector
   const hasVariants = variants && variants.length > 0
   const [selectedVariant, setSelectedVariant] = useState(0)
   const currentPrice = hasVariants ? variants![selectedVariant].price : price
 
-  // Description expand/collapse — only show toggle when text actually overflows 3 lines
-  const [descExpanded, setDescExpanded] = useState(false)
-  const [descClamped, setDescClamped] = useState(false)
-  const descRef = useRef<HTMLParagraphElement>(null)
-  useEffect(() => {
-    const el = descRef.current
-    if (!el) return
-    // scrollHeight > clientHeight means text is being cut off by the clamp
-    setDescClamped(el.scrollHeight > el.clientHeight)
-  }, [description])
-
-  // Cart confirmation state — flashes green then resets, modal stays open
+  const [descOpen, setDescOpen] = useState(false)
   const [added, setAdded] = useState(false)
-
-  // Reset flash when the user switches variants
-  const handleVariantChange = (i: number) => {
-    setSelectedVariant(i)
-    setAdded(false)
-  }
+  const [lightbox, setLightbox] = useState(false)
 
   const handleAddToCart = () => {
     const selectedSize = hasVariants ? variants![selectedVariant].size : null
-    // Include size in the cart ID so 16" and 18" are tracked as separate line items
     addItem({
       id: selectedSize ? `${productId}-${selectedSize}` : productId,
       title: selectedSize ? `${name} (${selectedSize})` : name,
@@ -65,11 +51,10 @@ export function ProductModal({
       image,
     })
     setAdded(true)
-    // Reset button after flash — user can keep adding or switch sizes
     setTimeout(() => setAdded(false), 1400)
   }
 
-  // ── Desktop image-only carousel ───────────────────────────────────────────
+  // ── image-only mode ───────────────────────────────────────────────────────
   if (imageOnly) {
     const arrowBtn: React.CSSProperties = {
       position: 'absolute', top: '50%', transform: 'translateY(-50%)',
@@ -77,386 +62,263 @@ export function ProductModal({
       border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(0,0,0,0.45)',
       color: '#fff', fontSize: '1.3rem', cursor: 'pointer', display: 'flex',
       alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-      fontFamily: 'inherit', transition: 'background 150ms ease',
+      fontFamily: 'inherit',
     }
     return (
-      <div
-        role="dialog" aria-modal="true" aria-label={name}
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') onClose()
-          if (e.key === 'ArrowLeft') prevImg()
-          if (e.key === 'ArrowRight') nextImg()
-        }}
-        tabIndex={-1}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 1000,
-          background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '32px',
-        }}
-      >
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: 'relative', width: '100%', maxWidth: '680px',
-            borderRadius: '16px', overflow: 'hidden',
-            boxShadow: '0 40px 100px rgba(0,0,0,0.5)',
-            background: 'var(--beige)',
-          }}
-        >
-          {/* Close */}
-          <button onClick={onClose} aria-label="Close" style={{
-            position: 'absolute', top: '12px', right: '12px', zIndex: 10,
-            width: '34px', height: '34px', borderRadius: '50%',
-            border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(0,0,0,0.45)',
-            cursor: 'pointer', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: '1.1rem', color: '#fff', lineHeight: 1,
-          }}>×</button>
-
-          {/* Product name */}
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 4,
-            padding: '14px 52px 14px 18px',
-            background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%)',
-          }}>
-            <p style={{ color: '#fff', fontSize: '1rem', fontWeight: 600, margin: 0, textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
-              {name}
-            </p>
-          </div>
-
-          {/* Main image */}
+      <div role="dialog" aria-modal="true" aria-label={name} onClick={onClose} tabIndex={-1}
+        style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
+        <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', maxWidth: '680px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 40px 100px rgba(0,0,0,0.5)', background: 'var(--beige)' }}>
+          <button onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, width: '34px', height: '34px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(0,0,0,0.45)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: '#fff', lineHeight: 1 }}>×</button>
           <div style={{ position: 'relative', height: '72vh', background: 'var(--beige)' }}>
-            <img
-              key={activeImage}
-              src={activeImage} alt={name}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-            />
-
-            {/* Prev / Next arrows */}
-            {gallery.length > 1 && (
-              <>
-                <button onClick={prevImg} aria-label="Previous image" style={{ ...arrowBtn, left: '12px' }}>‹</button>
-                <button onClick={nextImg} aria-label="Next image"     style={{ ...arrowBtn, right: '12px' }}>›</button>
-
-                {/* Counter */}
-                <span style={{
-                  position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)',
-                  background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.75rem',
-                  padding: '3px 10px', borderRadius: '999px', letterSpacing: '0.05em',
-                }}>
-                  {selectedImg + 1} / {gallery.length}
-                </span>
-              </>
-            )}
+            <img key={activeImage} src={activeImage} alt={name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+            {gallery.length > 1 && (<><button onClick={prevImg} aria-label="Previous" style={{ ...arrowBtn, left: '12px' }}>‹</button><button onClick={nextImg} aria-label="Next" style={{ ...arrowBtn, right: '12px' }}>›</button></>)}
           </div>
-
-          {/* Thumbnail strip */}
-          {gallery.length > 1 && (
-            <div style={{
-              display: 'flex', gap: '8px', padding: '10px 14px',
-              overflowX: 'auto', background: 'rgba(255,255,255,0.92)',
-              borderTop: '1px solid var(--border)', flexShrink: 0,
-            }}>
-              {gallery.map((src, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedImg(i)}
-                  aria-label={`View image ${i + 1}`}
-                  style={{
-                    flexShrink: 0, width: '52px', height: '52px', borderRadius: '8px',
-                    overflow: 'hidden', padding: 0, cursor: 'pointer', background: 'var(--beige)',
-                    border: i === selectedImg ? '2px solid var(--burgundy)' : '2px solid var(--border)',
-                    transition: 'border-color 160ms ease, transform 160ms ease',
-                    transform: i === selectedImg ? 'scale(1.08)' : 'scale(1)',
-                  }}
-                >
-                  <img src={src} alt={`${name} ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     )
   }
 
+  // ── MAIN MODAL ────────────────────────────────────────────────────────────
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={name}
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        background: 'rgba(15,10,6,0.72)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-      }}
-    >
+    <>
+      <style>{`
+        @keyframes pmFadeUp {
+          from { opacity: 0; transform: translateY(24px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes pmFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .pm-card {
+          position: relative;
+          width: 100%;
+          max-width: 680px;
+          max-height: 92vh;
+          overflow-y: auto;
+          border-radius: 28px;
+          overflow: hidden;
+          box-shadow: 0 48px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.07);
+          animation: pmFadeUp 300ms cubic-bezier(0.22,1,0.36,1) both;
+          display: flex;
+          flex-direction: column;
+        }
+        /* ── image section ── */
+        .pm-hero {
+          position: relative;
+          flex: 0 0 auto;
+          background: var(--beige);
+          overflow: hidden;
+          cursor: zoom-in;
+        }
+        .pm-hero img { width: 100%; height: 100%; display: block; }
+        .pm-main-img {
+          width: 100% !important;
+          height: auto !important;
+          display: block !important;
+          padding: 12px;
+          box-sizing: border-box;
+        }
+        .pm-thumb-btn img { object-fit: cover !important; padding: 0 !important; }
+
+
+        /* thumbnails */
+        .pm-thumbs {
+          position: absolute; top: 12px; left: 12px;
+          display: flex; gap: 6px; z-index: 5;
+        }
+        .pm-thumb-btn {
+          width: 44px; height: 44px; border-radius: 9px; overflow: hidden;
+          border: 2px solid transparent; padding: 0; cursor: pointer;
+          background: rgba(0,0,0,0.35); backdrop-filter: blur(6px);
+          transition: border-color 150ms ease, transform 150ms ease; flex-shrink: 0;
+        }
+        .pm-thumb-btn.active { border-color: #fff; transform: scale(1.08); }
+        .pm-thumb-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* close */
+        .pm-close {
+          position: absolute; top: 12px; right: 12px; z-index: 10;
+          width: 34px; height: 34px; border-radius: 50%;
+          border: 1px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.45);
+          backdrop-filter: blur(8px); color: #fff; font-size: 1.1rem; cursor: pointer;
+          display: flex; align-items: center; justify-content: center; line-height: 1;
+          transition: background 150ms ease;
+        }
+        .pm-close:hover { background: rgba(0,0,0,0.7); }
+        /* nav arrows */
+        .pm-arrow {
+          position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
+          width: 36px; height: 36px; border-radius: 50%;
+          border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.4);
+          backdrop-filter: blur(6px); color: #fff; font-size: 1.1rem; cursor: pointer;
+          display: flex; align-items: center; justify-content: center; line-height: 1;
+          font-family: inherit; transition: background 150ms ease;
+        }
+        .pm-arrow:hover { background: rgba(0,0,0,0.65); }
+        /* ── info panel ── */
+        .pm-panel {
+          flex: 1 1 auto;
+          background: #ffffff;
+          padding: 20px 22px 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          border-top: 1px solid var(--border);
+        }
+        .pm-title {
+          font-family: var(--font-cormorant,"Cormorant Garamond"),Georgia,serif;
+          font-size: clamp(1.6rem, 4vw, 2.2rem);
+          font-weight: 700; color: var(--ink);
+          line-height: 1.05; letter-spacing: -0.01em; margin: 0;
+        }
+        /* variant pills */
+        .pm-pill {
+          padding: 8px 16px; border-radius: 999px;
+          border: 1.5px solid rgba(31,27,22,0.18);
+          background: #ffffff;
+          color: var(--ink);
+          font-family: inherit; font-size: 0.82rem; font-weight: 600;
+          cursor: pointer; display: flex; flex-direction: column;
+          align-items: center; gap: 1px;
+          transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+          white-space: nowrap;
+        }
+        .pm-pill.active {
+          background: var(--beige); border-color: var(--accent);
+          color: var(--accent);
+        }
+        .pm-pill span { font-size: 0.7rem; color: var(--muted); }
+        .pm-pill.active span { color: var(--accent); }
+        /* desc */
+        .pm-desc-btn {
+          background: none; border: none;
+          color: var(--muted); font-family: inherit;
+          font-size: 0.76rem; font-weight: 600; letter-spacing: 0.05em;
+          cursor: pointer; padding: 0; text-align: left;
+          transition: color 150ms ease;
+        }
+        .pm-desc-btn:hover { color: var(--ink); }
+        .pm-desc-text {
+          font-size: 0.88rem; color: var(--muted); line-height: 1.6; margin: 0;
+        }
+        /* price */
+        .pm-price {
+          font-family: var(--font-cormorant,"Cormorant Garamond"),Georgia,serif;
+          font-size: 1.7rem; font-weight: 700; color: var(--burgundy); letter-spacing: 0.01em;
+        }
+        /* add to cart */
+        .pm-add-btn {
+          flex: 1; padding: 13px 20px; border-radius: 999px; border: none;
+          font-family: inherit; font-size: 0.85rem; font-weight: 700;
+          letter-spacing: 0.13em; text-transform: uppercase; cursor: pointer;
+          transition: background 300ms ease, transform 150ms ease, box-shadow 150ms ease;
+        }
+        .pm-add-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,0.35); }
+        .pm-add-btn:active { transform: scale(0.98); }
+      `}</style>
+
+      {/* Backdrop */}
       <div
-        onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-label={name}
+        onClick={onClose}
         style={{
-          position: 'relative',
-          background: '#ffffff',
-          borderRadius: '20px',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.22)',
-          width: '100%',
-          maxWidth: '860px',
-          maxHeight: '90vh',
-          display: 'flex',       // must be inline — CSS class alone is unreliable in Tailwind v4
-          flexDirection: 'column',
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(8,5,3,0.82)',
+          backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '16px',
+          animation: 'pmFadeIn 200ms ease both',
         }}
-        className="modal-container"
       >
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          style={{
-            position: 'absolute',
-            top: '16px',
-            right: '16px',
-            zIndex: 10,
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
-            border: '1px solid var(--border)',
-            background: 'rgba(255,255,255,0.95)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.1rem',
-            color: 'var(--muted)',
-            lineHeight: 1,
-          }}
-        >
-          ×
-        </button>
+        {/* Card */}
+        <div className="pm-card" onClick={e => e.stopPropagation()}>
 
-        {/* ── Image panel ──
-            height/position/overflow all inline — CSS class alone is unreliable in Tailwind v4.
-            Image is absolutely positioned to fill the panel; thumbnails overlay at bottom. */}
-        <div
-          className="modal-image-panel"
-          style={{
-            position: 'relative',
-            overflow: 'hidden',
-            background: 'var(--beige)',
-            flexGrow: 0,
-            flexShrink: 0,
-            flexBasis: '45vh',   // inline overrides CSS class flex-basis:45% which was resolving to 0
-            height: '45vh',      // fallback for non-flex contexts
-            borderRadius: '20px 20px 0 0',
-          }}
-        >
-          <img
-            key={activeImage}
-            src={activeImage}
-            alt={name}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              display: 'block',
-            }}
-          />
+          {/* ── Image ── */}
+          <div className="pm-hero" onClick={() => setLightbox(true)}>
+            <img key={activeImage} src={activeImage} alt={name} className="pm-main-img" />
 
-        </div>
-
-        {/* Thumbnail strip — below the image, not overlaying it */}
-        {gallery.length > 1 && (
-          <div
-            style={{
-              display: 'flex',
-              gap: '8px',
-              padding: '10px 14px',
-              overflowX: 'auto',
-              background: 'var(--beige)',
-              borderBottom: '1px solid var(--border)',
-              flexShrink: 0,
-            }}
-          >
-            {gallery.map((src, i) => (
-              <button
-                key={i}
-                onClick={() => setSelectedImg(i)}
-                aria-label={`View image ${i + 1}`}
-                style={{
-                  flexShrink: 0,
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  border: i === selectedImg ? '2px solid var(--burgundy)' : '2px solid var(--border)',
-                  padding: 0,
-                  cursor: 'pointer',
-                  background: '#fff',
-                  transition: 'border-color 160ms ease, transform 160ms ease',
-                  transform: i === selectedImg ? 'scale(1.05)' : 'scale(1)',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                }}
-              >
-                <img
-                  src={src}
-                  alt={`${name} view ${i + 1}`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                />
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* ── Content panel ── */}
-        <div
-          className="modal-content-panel"
-          style={{
-            flex: '1 1 auto',
-            minHeight: 0,
-            overflowY: 'auto',
-            padding: '22px 24px 28px',
-          }}
-        >
-          <h2
-            style={{
-              fontFamily: "var(--font-cormorant, 'Cormorant Garamond'), Georgia, serif",
-              fontSize: 'clamp(1.6rem, 3vw, 2.2rem)',
-              fontWeight: 700,
-              color: 'var(--ink)',
-              lineHeight: 1.1,
-              letterSpacing: '-0.01em',
-            }}
-          >
-            {name}
-          </h2>
-
-          <p
-            ref={descRef}
-            style={{
-              fontSize: '1.05rem', color: 'var(--muted)', lineHeight: 1.65, marginTop: '10px',
-              ...(!descExpanded ? {
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitBoxOrient: 'vertical',
-                WebkitLineClamp: 3,
-              } : {}),
-            }}
-          >
-            {description}
-          </p>
-          {descClamped && (
-            <button
-              onClick={() => setDescExpanded(v => !v)}
-              style={{
-                background: 'none', border: 'none', padding: '4px 0 0',
-                fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent)',
-                cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.03em',
-              }}
-            >
-              {descExpanded ? 'Show less ▲' : 'Read more ▼'}
-            </button>
-          )}
-
-          {/* ── Variant / size selector ── */}
-          {hasVariants && (
-            <div style={{ marginTop: '22px' }}>
-              <p style={{
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                letterSpacing: '0.13em',
-                textTransform: 'uppercase',
-                color: 'var(--muted)',
-                marginBottom: '10px',
-              }}>
-                {variantType}
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {variants!.map((v, i) => {
-                  const isActive = i === selectedVariant
-                  return (
-                    <button
-                      key={v.size}
-                      onClick={() => handleVariantChange(i)}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '2px',
-                        padding: '9px 16px',
-                        borderRadius: '10px',
-                        border: isActive ? '1.5px solid var(--burgundy)' : '1.5px solid var(--border)',
-                        background: isActive ? 'rgba(139,47,57,0.07)' : '#ffffff',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        transition: 'border-color 150ms ease, background 150ms ease',
-                        minWidth: '62px',
-                      }}
-                    >
-                      <span style={{
-                        fontSize: '0.9rem',
-                        fontWeight: 700,
-                        color: isActive ? 'var(--burgundy)' : 'var(--ink)',
-                        lineHeight: 1,
-                      }}>
-                        {v.size}
-                      </span>
-                      <span style={{
-                        fontSize: '0.75rem',
-                        color: isActive ? 'var(--burgundy)' : 'var(--muted)',
-                        lineHeight: 1,
-                        marginTop: '3px',
-                      }}>
-                        {v.price}
-                      </span>
-                    </button>
-                  )
-                })}
+            {gallery.length > 1 && (
+              <div className="pm-thumbs">
+                {gallery.map((src, i) => (
+                  <button key={i} className={`pm-thumb-btn${i === selectedImg ? ' active' : ''}`}
+                    onClick={e => { e.stopPropagation(); setSelectedImg(i) }} aria-label={`Image ${i + 1}`}>
+                    <img src={src} alt="" />
+                  </button>
+                ))}
               </div>
+            )}
+
+            {gallery.length > 1 && (
+              <>
+                <button className="pm-arrow" onClick={e => { e.stopPropagation(); prevImg() }} aria-label="Previous" style={{ left: '10px' }}>‹</button>
+                <button className="pm-arrow" onClick={e => { e.stopPropagation(); nextImg() }} aria-label="Next" style={{ right: '10px' }}>›</button>
+              </>
+            )}
+
+            <button className="pm-close" onClick={onClose} aria-label="Close">×</button>
+          </div>
+
+          {/* ── Info panel ── */}
+          <div className="pm-panel">
+
+            <h2 className="pm-title">{name}</h2>
+
+            {/* Description */}
+            <div>
+              <button className="pm-desc-btn" onClick={() => setDescOpen(v => !v)}>
+                {descOpen ? 'Hide details ▲' : 'Details ▼'}
+              </button>
+              {descOpen && <p className="pm-desc-text" style={{ marginTop: '8px' }}>{description}</p>}
             </div>
-          )}
 
-          {/* Price */}
-          <p
-            style={{
-              fontFamily: "var(--font-cormorant, 'Cormorant Garamond'), Georgia, serif",
-              fontSize: '2rem',
-              fontWeight: 700,
-              color: 'var(--burgundy)',
-              marginTop: '20px',
-            }}
-          >
-            {currentPrice}
-          </p>
+            {/* Variants */}
+            {hasVariants && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {variants!.map((v, i) => (
+                  <button key={v.size}
+                    className={`pm-pill${i === selectedVariant ? ' active' : ''}`}
+                    onClick={() => { setSelectedVariant(i); setAdded(false) }}>
+                    {v.size}<span>{v.price}</span>
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {/* Add to Cart — turns green with checkmark on success */}
-          <button
-            className="btn-solid"
-            onClick={handleAddToCart}
-            style={{
-              marginTop: '20px',
-              width: '100%',
-              justifyContent: 'center',
-              background: added
-                ? 'linear-gradient(135deg, #2a7a4a 0%, #1e5c38 100%)'
-                : undefined,
-              transition: 'background 300ms ease, transform 160ms ease',
-              gap: '8px',
-            }}
-          >
-            {added ? '✓  Added!' : 'Add to Cart'}
-          </button>
+            {/* Price + Add to Cart */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '2px' }}>
+              <span className="pm-price">{currentPrice}</span>
+              <button className="pm-add-btn" onClick={handleAddToCart}
+                style={{
+                  background: added
+                    ? 'linear-gradient(135deg,#2a7a4a,#1e5c38)'
+                    : 'linear-gradient(135deg,#1f1b16,#2b241d)',
+                  color: '#fff',
+                }}>
+                {added ? '✓  Added!' : 'Add to Cart'}
+              </button>
+            </div>
+
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div onClick={() => setLightbox(false)}
+          onKeyDown={e => { if (e.key === 'Escape') setLightbox(false); if (e.key === 'ArrowLeft') { e.stopPropagation(); prevImg() } if (e.key === 'ArrowRight') { e.stopPropagation(); nextImg() } }}
+          tabIndex={-1}
+          style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', cursor: 'zoom-out' }}>
+          <img src={activeImage} alt={name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 40px 100px rgba(0,0,0,0.6)' }} />
+          <button onClick={() => setLightbox(false)} aria-label="Close" style={{ position: 'fixed', top: '16px', right: '16px', width: '40px', height: '40px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+          {gallery.length > 1 && (
+            <>
+              <button onClick={e => { e.stopPropagation(); prevImg() }} aria-label="Previous" style={{ position: 'fixed', left: '16px', top: '50%', transform: 'translateY(-50%)', width: '44px', height: '44px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '1.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>‹</button>
+              <button onClick={e => { e.stopPropagation(); nextImg() }} aria-label="Next" style={{ position: 'fixed', right: '16px', top: '50%', transform: 'translateY(-50%)', width: '44px', height: '44px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '1.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>›</button>
+              <span style={{ position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.8rem', padding: '4px 12px', borderRadius: '999px' }}>{selectedImg + 1} / {gallery.length}</span>
+            </>
+          )}
+        </div>
+      )}
+    </>
   )
 }
