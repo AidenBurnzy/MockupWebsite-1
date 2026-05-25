@@ -68,7 +68,7 @@ export default async function HomePage() {
             {heroHeadline}
           </h1>
           <p
-            className="lede"
+            className="lede hero-lede"
             data-ngf-field="hero.lede"
             data-ngf-label="Hero Lede"
             data-ngf-type="textarea"
@@ -77,36 +77,8 @@ export default async function HomePage() {
             {heroLede}
           </p>
 
-          {/* Engraving callout — inline, no card */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <span
-              className="hero-engraving-tag"
-              style={{
-                display: 'inline-flex', alignItems: 'center',
-                background: 'rgba(139,47,57,0.1)', color: 'var(--burgundy)',
-                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em',
-                textTransform: 'uppercase', padding: '4px 10px', borderRadius: '999px',
-              }}
-              data-ngf-field="hero.engravingTagline"
-              data-ngf-label="Engraving Tagline"
-              data-ngf-type="text"
-              data-ngf-section="Hero"
-            >
-              {heroEngravingTagline}
-            </span>
-            <span
-              style={{ fontSize: '0.9rem', color: 'var(--ink)', fontWeight: 500 }}
-              data-ngf-field="hero.engravingTitle"
-              data-ngf-label="Engraving Title"
-              data-ngf-type="text"
-              data-ngf-section="Hero"
-            >
-              {heroEngravingTitle}
-            </span>
-          </div>
-
           {/* CTA buttons */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+          <div className="hero-cta-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
             <Link
               href="/products#engraving"
               className="btn-solid"

@@ -65,7 +65,7 @@ function ProductCard({ product, index }: {
           >
             {product.name}
           </h3>
-          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--muted)' }}>
+          <p className="product-card-desc" style={{ margin: 0, fontSize: '0.85rem', color: 'var(--muted)' }}>
             {product.description.length > 72
               ? product.description.slice(0, product.description.lastIndexOf(' ', 72)) + '…'
               : product.description}

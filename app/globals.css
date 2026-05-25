@@ -717,8 +717,14 @@
   .filter-groups-wrap { display: none; }
   .filter-groups-open { display: block !important; margin-top: 10px; }
 
-  /* Hero "Now Offering" badge — hide on mobile to reduce pill clutter */
-  .hero-engraving-tag { display: none !important; }
+  /* Hero lede paragraph — hide on mobile (h1 + buttons are enough) */
+  .hero-lede { display: none !important; }
+
+  /* Hero CTA buttons — center on mobile */
+  .hero-cta-row { justify-content: center; }
+
+  /* Shop page product cards — hide description on mobile to keep cards compact */
+  .product-card-desc { display: none !important; }
 
   /* h1 — balance line breaks so no orphan single word on last line */
   h1 { text-wrap: balance; }
