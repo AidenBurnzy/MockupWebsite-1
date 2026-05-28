@@ -162,40 +162,20 @@ export const PRODUCTS: Product[] = [
 
 export const BUNDLES: Bundle[] = [
   {
-    id: 'triple-hoop',
-    name: 'Triple Hoop Bundle',
-    description:
-      'Save 30% on our best hoops. Mix metals or keep it classic — the choice is yours.',
-    price: '$104',
-    comparePrice: '$132',
-    badge: 'Save 30%',
+    id: 'mary-bundle',
+    name: 'Mary Bundle',
+    description: 'Includes Mary Turquoise necklace and Bracelet.',
+    price: '$79.99',
+    comparePrice: '',
+    badge: '',
   },
   {
-    id: 'essentials-bracelet',
-    name: 'Essentials Bracelet Set',
-    description:
-      'Everyday layers with a polished shine. A complete wrist stack in one curated set.',
-    price: '$108',
-    comparePrice: '$152',
-    badge: 'Save 29%',
-  },
-  {
-    id: 'sunkissed-necklace',
-    name: 'Sunkissed Necklace Set',
-    description:
-      'Warm gold layers for golden hour. Three lengths, one effortlessly radiant look.',
-    price: '$84',
-    comparePrice: '$118',
-    badge: 'Save 29%',
-  },
-  {
-    id: 'color-pop',
-    name: 'Color Pop Bundle',
-    description:
-      'Playful accents for daily styling. Bold pieces that layer beautifully together.',
-    price: '$85',
-    comparePrice: '$121',
-    badge: 'Save 30%',
+    id: 'sheri-bundle',
+    name: 'Sheri Bundle',
+    description: 'Includes Sheri necklace and bracelet.',
+    price: '$79.99',
+    comparePrice: '',
+    badge: '',
   },
 ]
 
