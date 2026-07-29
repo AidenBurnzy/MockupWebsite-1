@@ -180,7 +180,7 @@ export function Header({ announcementText }: HeaderProps) {
           {/* Brand */}
           <Link href="/" className="flex items-center gap-3 shrink-0 brand-link">
             <Image
-              src="/assets/logos/noma-logo-new.png"
+              src="/assets/logos/noma-logo-v2.png"
               alt="NOMA Designs"
               width={120}
               height={120}
