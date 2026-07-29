@@ -15,7 +15,6 @@
   --radius: 16px;
   --banner-height: 44px;
   --header-height: 60px;
-  --logo-height: 40px;
   --header-offset: 112px;
   --mobile-menu-top: 128px;
 }
@@ -558,7 +557,7 @@
 }
 
 /* ── Logo ── */
-.brand-logo { height: var(--logo-height); width: auto; display: block; max-height: none; }
+.brand-logo { height: 50px; width: auto; display: block; }
 
 /* ── Header cart button ── */
 .header-cart { padding: 10px 18px !important; font-size: 0.85rem !important; }
