@@ -179,14 +179,11 @@ export function Header({ announcementText }: HeaderProps) {
         <header className="header-inner">
           {/* Brand */}
           <Link href="/" className="flex items-center gap-3 shrink-0 brand-link">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/assets/logos/noma-logo-v2.png"
               alt="NOMA Designs"
-              width={120}
-              height={120}
               className="brand-logo"
-              style={{ height: '52px', width: 'auto', objectFit: 'contain' }}
-              priority
             />
             <span className="sr-only">NOMA Fine Jewelry</span>
           </Link>
