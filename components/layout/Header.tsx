@@ -180,12 +180,12 @@ export function Header({ announcementText }: HeaderProps) {
           {/* Brand */}
           <Link href="/" className="flex items-center gap-3 shrink-0 brand-link">
             <Image
-              src="/assets/logos/noma-logo-primary.png"
-              alt="NOMA Fine Jewelry"
-              width={160}
-              height={60}
+              src="/assets/logos/noma-logo-new.png"
+              alt="NOMA Designs"
+              width={120}
+              height={120}
               className="brand-logo"
-              style={{ height: '100%', width: 'auto', objectFit: 'contain' }}
+              style={{ height: '52px', width: 'auto', objectFit: 'contain' }}
               priority
             />
             <span className="sr-only">NOMA Fine Jewelry</span>
