@@ -12,7 +12,7 @@ export function Footer({ tagline }: FooterProps) {
         {/* Brand */}
         <div className="flex flex-col items-center md:items-start gap-2">
           <Image
-            src="/assets/logos/noma-logo-v2.png"
+            src="/assets/logos/noma-logo-v3.png"
             alt="NOMA Designs"
             width={80}
             height={80}
