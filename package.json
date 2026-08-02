@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "doctor": "node scripts/ngf-doctor.mjs",
+    "doctor:strict": "node scripts/ngf-doctor.mjs --strict"
   },
   "dependencies": {
     "next": "16.1.6",
