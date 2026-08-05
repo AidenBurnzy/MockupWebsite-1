@@ -738,3 +738,41 @@
   /* h1 — balance line breaks so no orphan single word on last line */
   h1 { text-wrap: balance; }
 }
+
+/* ── NGF editor-only gallery ──────────────────────────────────────────────────
+   Extra product photos are annotated in the always-rendered product card rather
+   than inside the modal, because the portal's scraper reads the server-rendered
+   HTML once and a conditionally-rendered modal is never in it.
+
+   The container is therefore ALWAYS emitted (so the scraper finds every photo)
+   and hidden from real visitors here. It only becomes visible inside the portal
+   editor, where the bridge sets data-ngf-edit="true" on <html>. The storefront
+   is visually unchanged.
+
+   Do not switch this to `hidden` or remove the element conditionally — an
+   element that is absent from the SSR HTML cannot be edited at all. */
+.ngf-editor-only-gallery {
+  display: none;
+}
+
+html[data-ngf-edit='true'] .ngf-editor-only-gallery {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 6px;
+  border-top: 1px dashed var(--border, #ddd);
+}
+
+html[data-ngf-edit='true'] .ngf-editor-only-gallery > div {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+html[data-ngf-edit='true'] .ngf-editor-only-gallery img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}

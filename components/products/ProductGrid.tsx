@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { ProductModal } from '@/components/ui/ProductModal'
 import type { Product } from '@/lib/site-data'
 import type { NgfSiteContent } from '@/lib/ngf'
-import { getItems } from '@/lib/ngf'
+import { getItems, getGallery } from '@/lib/ngf'
 
 const METALS = ['Gold', 'Silver', 'Pearl', 'Rose Gold', 'Diamond']
 const TYPES  = ['Necklaces', 'Earrings', 'Bracelets', 'Rings', 'Engravable']
@@ -22,9 +22,13 @@ function parsePrice(p: string) {
 }
 
 // ── Per-card component — owns modal state ─────────────────────────────────────
-function ProductCard({ product, index }: {
+function ProductCard({ product, index, gallery }: {
   product: Product
   index: number
+  /** Published extra photos, falling back to the hardcoded set. Used for BOTH
+      the editor-only annotated container and the modal's thumbnail strip, so
+      what the client publishes is what customers actually see. */
+  gallery: string[]
 }) {
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -47,6 +51,31 @@ function ProductCard({ product, index }: {
             data-ngf-section="Products"
           />
         </div>
+
+        {/* Extra product photos — the ones the modal's thumbnail strip shows.
+            The modal is conditionally rendered, so the portal's scraper (which
+            reads the server-rendered HTML once) can never see anything inside
+            it. The container therefore lives here, in the always-rendered card.
+            It IS emitted on every request so the scraper finds it, and is hidden
+            from real visitors by CSS that only lifts inside the editor
+            (html[data-ngf-edit="true"]) — the storefront is unchanged.
+            One direct child per photo with the <img> as a descendant: the bridge
+            locates items with child.querySelector() and clones the last child
+            when adding. */}
+        <div
+          className="ngf-editor-only-gallery"
+          data-ngf-field={`products.items.${index}.gallery`}
+          data-ngf-label="Extra Photos"
+          data-ngf-type="gallery"
+          data-ngf-section="Products"
+        >
+          {gallery.map((src, n) => (
+            <div key={n}>
+              <img src={src} alt="" loading="lazy" decoding="async" />
+            </div>
+          ))}
+        </div>
+
         <div className="mini-body">
           {product.badge && (
             <p
@@ -119,7 +148,7 @@ function ProductCard({ product, index }: {
           description={product.description}
           price={product.price}
           image={product.image}
-          images={product.images}
+          images={gallery.length > 0 ? gallery : product.images}
           variants={product.variants}
           variantType={product.variantType}
           onClose={() => setModalOpen(false)}
@@ -333,6 +362,7 @@ export function ProductGrid({ products, content, initialMetals = [], initialType
             key={product.id}
             product={product}
             index={i}
+            gallery={getGallery(content, `products.items.${i}.gallery`, product.images ?? [])}
           />
         ))}
 
