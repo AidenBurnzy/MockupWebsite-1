@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/components/CartProvider'
-import { quote, formatCents } from '@/lib/pricing'
+import { quote, formatCents, type StoreSettings } from '@/lib/ngf-store'
 
 /**
  * Square Web Payments SDK checkout.
@@ -76,7 +76,7 @@ function newOrderRef() {
   return `noma_${rand}`.slice(0, 40)
 }
 
-export function CheckoutClient() {
+export function CheckoutClient({ settings }: { settings: StoreSettings }) {
   const { items, clearCart } = useCart()
   const [status, setStatus] = useState<Status>('loading')
   const [message, setMessage] = useState<string>('')
@@ -97,7 +97,10 @@ export function CheckoutClient() {
     0,
   )
   // Tax needs a destination, so totals firm up once the state is entered.
-  const totals = useMemo(() => quote(subtotalCents, form.state || null), [subtotalCents, form.state])
+  const totals = useMemo(
+    () => quote(subtotalCents, form.state || null, settings),
+    [subtotalCents, form.state, settings],
+  )
 
   // Stable per cart. A different cart must get a different ref, or Square
   // rejects the reused idempotency key.
@@ -269,7 +272,7 @@ export function CheckoutClient() {
                 <span>Subtotal</span><span>{formatCents(totals.subtotalCents)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span>Shipping</span>
+                <span>{settings.shippingLabel}</span>
                 <span>{totals.shippingCents === 0 ? 'Free' : formatCents(totals.shippingCents)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>

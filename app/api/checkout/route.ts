@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
 import { resolveCart, type IncomingItem } from '@/lib/checkout'
-import { quote } from '@/lib/pricing'
-import { createOrder, createPayment, cancelByIdempotencyKey, type Customer } from '@/lib/square'
-import { reportOrderToNgf, siteDomain } from '@/lib/ngf-order'
-import type { OrderReportV1 } from '@/lib/order-contract'
+import { quote, getStoreSettings } from '@/lib/ngf-store'
+import { createOrder, createPayment, cancelByIdempotencyKey, type Customer } from '@/lib/square-checkout'
+import { reportOrderToNgf, siteDomain, type OrderReportV1 } from '@/lib/ngf-order'
 
 /**
  * POST /api/checkout — create a Square order and charge it.
@@ -115,7 +114,12 @@ export async function POST(req: Request) {
   const resolved = resolveCart(items)
   if (!resolved.ok) return bad(resolved.reason)
 
-  const priced = quote(resolved.subtotalCents, state)
+  // Settings come from the client's portal, not from constants here — NOMA
+  // owns its own shipping and tax. Falls back to zeroes if the portal is
+  // unreachable rather than blocking the sale.
+  const settings = await getStoreSettings()
+  const priced = quote(resolved.subtotalCents, state, settings)
+  const taxRule = settings.taxRules.find((r) => r.state === state) ?? null
 
   // The browser and the server must agree on the total before any charge.
   if (
@@ -160,6 +164,9 @@ export async function POST(req: Request) {
     orderRef,
     lines: resolved.lines,
     shippingCents: priced.shippingCents,
+    shippingLabel: settings.shippingLabel,
+    tax: taxRule ? { name: `${taxRule.state} Sales Tax`, ratePercent: taxRule.ratePercent } : null,
+    taxAppliesShipping: settings.taxAppliesShipping,
     customer: squareCustomer,
   })
   if (!order.ok) {
@@ -186,7 +193,7 @@ export async function POST(req: Request) {
     currency: 'USD',
     customer: { name, email, phone },
     shipping: {
-      method: priced.shippingCents === 0 ? 'Free shipping' : 'Standard shipping',
+      method: priced.shippingCents === 0 ? 'Free shipping' : settings.shippingLabel,
       address: squareCustomer.address,
       note: squareCustomer.note,
     },

@@ -1,5 +1,4 @@
 import type { CheckoutLine } from '@/lib/checkout'
-import { TAX_RATE_PERCENT, TAX_STATE } from '@/lib/pricing'
 
 /**
  * Square Orders + Payments.
@@ -134,14 +133,19 @@ export async function createOrder(args: {
   orderRef: string
   lines: CheckoutLine[]
   shippingCents: number
+  shippingLabel: string
+  /** The tax rule that applies to THIS destination, already resolved from the
+   *  client's portal settings. Null when the destination is not taxed. */
+  tax: { name: string; ratePercent: number } | null
+  /** Whether tax applies to the shipping charge — a per-state, per-client
+   *  decision, so it comes from settings rather than being assumed here. */
+  taxAppliesShipping: boolean
   customer: Customer
 }): Promise<SquareResult<{ orderId: string; totalCents: number }>> {
   const { locationId } = auth()
   if (!locationId) {
     return { ok: false, kind: 'config', message: 'Square location is not configured.' }
   }
-
-  const taxable = args.customer.address.state.trim().toUpperCase() === TAX_STATE
 
   const result = await squareFetch<{ order: SquareOrder }>('/v2/orders', {
     idempotency_key: args.idempotencyKey,
@@ -160,13 +164,13 @@ export async function createOrder(args: {
         // on the Square Dashboard order without cross-referencing anything.
         ...(line.customization ? { note: `Engraving: ${line.customization}`.slice(0, 500) } : {}),
       })),
-      ...(taxable
+      ...(args.tax
         ? {
             taxes: [
               {
                 uid: 'sales-tax',
-                name: `${TAX_STATE} Sales Tax`,
-                percentage: String(TAX_RATE_PERCENT),
+                name: args.tax.name,
+                percentage: String(args.tax.ratePercent),
                 scope: 'ORDER',
                 type: 'ADDITIVE',
               },
@@ -178,12 +182,12 @@ export async function createOrder(args: {
             service_charges: [
               {
                 uid: 'shipping',
-                name: 'Shipping',
+                name: args.shippingLabel,
                 amount_money: { amount: args.shippingCents, currency: 'USD' },
-                // SUBTOTAL_PHASE means shipping is added before tax, so tax
-                // applies to it. See the accountant note in lib/pricing.ts —
-                // switch to TOTAL_PHASE if shipping is not taxable in Michigan.
-                calculation_phase: 'SUBTOTAL_PHASE',
+                // SUBTOTAL_PHASE adds shipping BEFORE tax, so tax applies to it.
+                // TOTAL_PHASE adds it after, leaving it untaxed. Which is correct
+                // varies by state, so the client chooses it in their portal.
+                calculation_phase: args.taxAppliesShipping ? 'SUBTOTAL_PHASE' : 'TOTAL_PHASE',
               },
             ],
           }

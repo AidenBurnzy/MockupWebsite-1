@@ -1,28 +1,140 @@
-import type { OrderReportV1 } from '@/lib/order-contract'
-
 /**
- * Report a completed order to the central NGF order store.
+ * NGF order reporting — CANONICAL. Byte-identical on every NGF site.
  *
- * WHAT THIS IS NOT: it is not the system of record. Square is — the order it
- * holds has the line items, the engraving and the shipping address, so NOMA can
- * fulfil from the Square Dashboard even if every call in this file fails. That
- * is the whole reason the checkout creates a real Square Order before charging.
+ * Do not hand-edit. `npm run sync-ngf` overwrites this file and
+ * `npm run sync-ngf:check` fails on drift, because the shape below is a contract
+ * with the NGF platform and a drifted copy silently mis-reports real money.
  *
- * WHAT IT IS: the queryable mirror that puts orders in the client's own portal
- * and emails them a notification. Convenience layered on top of Square.
+ * WHAT THIS IS FOR. A storefront takes payment with its own provider — Square,
+ * Stripe, whatever — and then reports the settled order here. NGF stores it,
+ * shows it in the client's portal, and emails the customer and the owner.
  *
- * CONTRACT — identical in spirit to lib/ngf-lead.ts:
- * - It NEVER throws. Every path returns { ok }. A payment that has already
- *   settled must never be failed by a reporting problem.
- * - It resolves the client from NEXT_PUBLIC_SITE_URL, which must match
- *   `site_url` in the NGF admin exactly. If it does not, this logs loudly and
- *   the order never reaches the portal — check Admin → Ecosystem, which tests
- *   that binding end to end.
- * - Unlike the lead relay this is AUTHENTICATED, with a per-client shared
- *   secret. An unauthenticated order endpoint would let anyone tell Nick to
- *   ship jewelry to an address of their choosing. Leads tolerate junk; orders
- *   do not.
+ * NGF NEVER HOLDS YOUR PAYMENT CREDENTIALS. That is the point of reporting
+ * rather than integrating: the provider token stays in this site's own
+ * environment, and the platform never becomes a place where client payment keys
+ * accumulate. It also means a future Stripe or PayPal site posts this same
+ * shape with no platform change — `payment.provider` is a label and every
+ * provider id is opaque.
  */
+
+export interface OrderLineV1 {
+  /** Stable catalog id, so "what sold" survives a product being renamed. */
+  sku: string
+  /** Title AS SOLD, snapshotted — the order should read the way the buyer saw it. */
+  title: string
+  /** e.g. `18"`. Separate from title so a pick list can column it. */
+  variant: string | null
+  qty: number
+  /** Integer cents. Both sent so NGF never does money arithmetic of its own. */
+  unitCents: number
+  lineCents: number
+  /**
+   * What to engrave. The single most important field here for NOMA: the site
+   * advertises personalization, and without this a buyer can order an engraved
+   * piece and nothing anywhere records what it should say.
+   */
+  customization: string | null
+  /** Absolute URL, so the portal can render a visual pick list. */
+  imageUrl: string | null
+}
+
+export interface OrderReportV1 {
+  /** Bump on any breaking change. NGF rejects unknown versions loudly rather
+   *  than silently mis-parsing an order somebody has already paid for. */
+  version: 1
+
+  /** Bare host of the storefront. Resolves to a client via the same
+   *  domain→client binding the content and lead APIs already use. */
+  domain: string
+
+  /** The storefront's own order id, STABLE ACROSS RETRIES. This is the dedupe
+   *  key — NGF holds a unique index on (client_id, order_ref), which is what
+   *  makes reporting safe to retry. Kept ≤ 40 chars so it also fits Square's
+   *  `reference_id` limit. */
+  orderRef: string
+
+  /** PENDING is written BEFORE the charge, PAID after it settles. A PENDING row
+   *  that never became PAID is the alarm that money may have moved without
+   *  being recorded — see the ordering notes in app/api/checkout/route.ts. */
+  status: 'PENDING' | 'PAID' | 'FAILED'
+
+  /** RFC 3339 UTC — when the buyer submitted, not when NGF received it, which
+   *  can be later after retries. */
+  placedAt: string
+
+  currency: string
+
+  customer: {
+    name: string
+    /** Required. An order NGF cannot email is an order somebody has to chase. */
+    email: string
+    /** Carriers need it for delivery exceptions, and Square's fulfillment
+     *  recipient wants it too. */
+    phone: string | null
+  }
+
+  /** Null only for pickup or digital orders. A physical order always has one. */
+  shipping: {
+    /** Buyer-facing label of the method chosen. Free text — carrier service
+     *  taxonomies are not portable between providers. */
+    method: string
+    address: {
+      line1: string
+      line2: string | null
+      city: string
+      state: string
+      postalCode: string
+      /** ISO 3166 alpha-2. */
+      country: string
+    }
+    /** Gift note or delivery instructions. */
+    note: string | null
+  } | null
+
+  /** Non-empty. What to pull off the shelf. */
+  lines: OrderLineV1[]
+
+  /** All integer cents, sent rather than derived: the charging system's
+   *  arithmetic is authoritative and NGF must never disagree with the receipt.
+   *  NGF asserts subtotal − discount + shipping + tax === total and rejects a
+   *  mismatch, because a report that does not add up is a bug or a forgery. */
+  totals: {
+    subtotalCents: number
+    discountCents: number
+    shippingCents: number
+    taxCents: number
+    totalCents: number
+  }
+
+  payment: {
+    /** 'square' | 'stripe' | … A label. NGF branches on nothing. */
+    provider: string
+    status: 'PENDING' | 'COMPLETED' | 'FAILED'
+    /** Opaque ids, so a human can jump from the portal to the provider's own
+     *  dashboard. NGF never calls the provider with them. */
+    providerOrderId: string | null
+    providerPaymentId: string | null
+    receiptUrl: string | null
+    /** Display-only card identity, for "the Visa ending 4242" in a dispute.
+     *  Brand and last four are non-sensitive; NOTHING else about a card ever
+     *  appears in this contract, and the NGF ingest rejects payloads containing
+     *  card-shaped keys outright. */
+    cardBrand: string | null
+    cardLast4: string | null
+    amountCents: number
+  }
+}
+
+/** Keys that must never appear anywhere in a report. Enforced on both ends. */
+export const FORBIDDEN_KEY_PATTERN =
+  /card_?number|\bpan\b|cvv|cvc|exp_?month|exp_?year|source_id|nonce|access_?token|secret/i
+
+/** True when the money adds up. Both the sender and NGF check this. */
+export function totalsBalance(t: OrderReportV1['totals']): boolean {
+  return (
+    t.subtotalCents - t.discountCents + t.shippingCents + t.taxCents === t.totalCents
+  )
+}
 
 const TIMEOUT_MS = 5000
 
