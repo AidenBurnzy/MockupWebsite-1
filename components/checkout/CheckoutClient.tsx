@@ -102,16 +102,39 @@ export function CheckoutClient({ settings }: { settings: StoreSettings }) {
     [subtotalCents, form.state, settings],
   )
 
-  // Stable per cart. A different cart must get a different ref, or Square
-  // rejects the reused idempotency key.
-  const cartSignature = useMemo(
-    () => items.map((i) => `${i.id}x${i.qty}`).join('|'),
-    [items],
+  // The ref must change whenever the Square ORDER BODY would change — not just
+  // when the cart does.
+  //
+  // THE BUG THIS FIXES: the signature used to be cart ids and quantities only.
+  // So a customer whose card declined, or who mistyped their state, would fix it
+  // and resubmit against the SAME Square idempotency key with a DIFFERENT order
+  // body. Square answers IDEMPOTENCY_KEY_REUSED, which classifies as a config
+  // error, so they saw "We could not start your order" on every subsequent
+  // attempt forever, with no hint that reloading was the cure. A declined card
+  // is the single most common non-happy path in checkout, and it was a dead end.
+  const orderSignature = useMemo(
+    () =>
+      [
+        items.map((i) => `${i.id}x${i.qty}x${i.customization ?? ''}`).join('|'),
+        // Everything that reaches the Square order: the fulfilment recipient,
+        // and the destination, which decides shipping and tax.
+        form.name, form.email, form.phone,
+        form.line1, form.line2, form.city, form.state, form.postalCode, form.country,
+        form.note,
+        totals.totalCents,
+      ].join('~'),
+    [items, form, totals.totalCents],
   )
   const orderRefRef = useRef<string>(newOrderRef())
   useEffect(() => {
     orderRefRef.current = newOrderRef()
-  }, [cartSignature])
+  }, [orderSignature])
+
+  // Bumped on every FAILED attempt. The server appends it to the payment
+  // idempotency key only, so a genuine retry after a decline gets a fresh
+  // payment key while the network-ambiguity retry inside the server still
+  // reuses the same one — which is what makes that retry safe.
+  const attemptRef = useRef(0)
 
   useEffect(() => {
     if (!APP_ID || !LOCATION_ID) {
@@ -183,6 +206,7 @@ export function CheckoutClient({ settings }: { settings: StoreSettings }) {
         body: JSON.stringify({
           sourceId: result.token,
           orderRef: orderRefRef.current,
+          attempt: attemptRef.current,
           expectedTotalCents: totals.totalCents,
           items: items.map((i) => ({ id: i.id, qty: i.qty, customization: i.customization ?? null })),
           customer: form,
@@ -198,6 +222,9 @@ export function CheckoutClient({ settings }: { settings: StoreSettings }) {
           setMessage(data.error)
           return
         }
+        // A new payment key next time. Without this, retrying after a decline
+        // reuses a consumed key and Square refuses outright.
+        attemptRef.current += 1
         setStatus('ready')
         setMessage(data.error || 'Payment failed. Please try again.')
         return

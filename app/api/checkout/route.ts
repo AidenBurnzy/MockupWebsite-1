@@ -48,6 +48,9 @@ interface CheckoutBody {
   /** Stable per checkout ATTEMPT, generated once in the browser and reused
    *  across retries. This is what makes a retry safe. */
   orderRef?: string
+  /** Which submit attempt this is for the same order. Only the PAYMENT key
+   *  varies with it — see the key derivation below. */
+  attempt?: number
   items?: IncomingItem[]
   customer?: {
     name?: string
@@ -86,6 +89,10 @@ export async function POST(req: Request) {
   }
 
   const { sourceId, orderRef, items, customer, expectedTotalCents } = body
+  // Bounded so a caller cannot push the key past Square's 45-char cap.
+  const attempt = Number.isInteger(body.attempt) && body.attempt! >= 0 && body.attempt! < 1000
+    ? body.attempt!
+    : 0
   if (!sourceId || !orderRef || !Array.isArray(items)) {
     return bad('Missing payment details.')
   }
@@ -152,11 +159,24 @@ export async function POST(req: Request) {
     note: (c.note ?? '').trim() || null,
   }
 
-  // Two DISTINCT idempotency keys, both derived from the same orderRef. Square
-  // documents neither the retention window nor the scope of a key, so they are
-  // treated as permanent and endpoint-scoped and never shared across endpoints.
+  // Two DISTINCT idempotency keys. Square documents neither the retention
+  // window nor the scope of a key, so they are treated as permanent and
+  // endpoint-scoped and never shared across endpoints.
+  //
+  // The ORDER key is stable per orderRef, and orderRef already changes whenever
+  // the order body changes — so a genuine re-submit builds a new order rather
+  // than colliding with the old one.
+  //
+  // The PAYMENT key additionally carries the attempt number. A DECLINE CONSUMES
+  // THE KEY: retrying the same key after a decline returns the original decline
+  // rather than charging the new card, which dead-ended every customer whose
+  // first card failed. A fresh attempt gets a fresh key.
+  //
+  // The network-ambiguity retry further down deliberately does NOT bump this —
+  // reusing the identical key is precisely what makes that retry safe, because
+  // Square replays the original payment instead of taking a second one.
   const orderKey = `o_${orderRef}`.slice(0, 45)
-  const paymentKey = `p_${orderRef}`.slice(0, 45)
+  const paymentKey = `p${attempt}_${orderRef}`.slice(0, 45)
 
   // ── B. Create the Square order. Square now holds everything needed to ship. ──
   const order = await createOrder({
@@ -176,6 +196,43 @@ export async function POST(req: Request) {
         ? 'We could not start your order. Nothing has been charged. Please try again or contact us.'
         : order.message
     return NextResponse.json({ ok: false, kind: order.kind, error: message }, { status: 502 })
+  }
+
+  // ── RECONCILE BEFORE CHARGING. ──
+  //
+  // Two pricing engines now exist: quote() here, and Square's own tax engine on
+  // the order we just created. They must agree to the cent, and if they ever do
+  // not, the customer is about to be charged a number they were never shown.
+  //
+  // This is the check `expectedTotalCents` above CANNOT do — that compares the
+  // browser's quote to the server's quote, both produced by the same function,
+  // so it can never detect a divergence with Square. This one can.
+  //
+  // It also fails closed on causes we have not thought of: a rounding
+  // difference from Square apportioning tax per line item, a service charge
+  // phase change, a future Square pricing rule. Nothing is charged on a
+  // mismatch. The unpaid Square order is simply left open and harmless.
+  if (order.data.totalCents !== priced.totalCents) {
+    console.error('[checkout] TOTAL MISMATCH — refused to charge', {
+      orderRef,
+      squareTotalCents: order.data.totalCents,
+      ourTotalCents: priced.totalCents,
+      subtotalCents: priced.subtotalCents,
+      shippingCents: priced.shippingCents,
+      taxCents: priced.taxCents,
+      taxAppliesShipping: settings.taxAppliesShipping,
+      destinationState: state,
+    })
+    return NextResponse.json(
+      {
+        ok: false,
+        kind: 'server',
+        error:
+          'We could not confirm your total, so nothing has been charged. ' +
+          'Please contact us and we will complete your order by hand.',
+      },
+      { status: 502 },
+    )
   }
 
   const domain = siteDomain()

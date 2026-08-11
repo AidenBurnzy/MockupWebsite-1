@@ -84,17 +84,28 @@ export function CartPageClient() {
                 <span>Subtotal</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
+              {/* Shipping and tax both depend on the delivery address and on
+                  the client's own Store Settings, neither of which the cart
+                  knows. Saying "Free" here promised something checkout may not
+                  honour. */}
               <div className="flex justify-between text-sm text-[var(--muted)] mb-4">
-                <span>Shipping</span>
-                <span>Free</span>
+                <span>Shipping &amp; tax</span>
+                <span>Calculated at checkout</span>
               </div>
               <div className="flex justify-between font-semibold text-[var(--ink)] text-base border-t border-[var(--border)] pt-4 mb-6">
-                <span>Total</span>
+                <span>Subtotal</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
-              <button className="w-full py-3 rounded-full bg-[var(--ink)] text-[var(--bg)] font-medium hover:bg-[var(--brown)] transition-colors mb-3">
+              {/* Was a bare <button> with no handler and no href — the ONLY
+                  reference to /checkout anywhere in the app was the route file
+                  itself, so the entire payment path was unreachable by any
+                  click. A customer clicked this and nothing happened. */}
+              <Link
+                href="/checkout"
+                className="block w-full py-3 rounded-full bg-[var(--ink)] text-[var(--bg)] text-center font-medium hover:bg-[var(--brown)] transition-colors mb-3"
+              >
                 Proceed to Checkout
-              </button>
+              </Link>
               <Link
                 href="/products"
                 className="block w-full py-3 rounded-full border border-[var(--border)] text-center text-sm font-medium text-[var(--ink)] hover:bg-[var(--beige)] transition-colors"

@@ -184,10 +184,17 @@ export async function createOrder(args: {
                 uid: 'shipping',
                 name: args.shippingLabel,
                 amount_money: { amount: args.shippingCents, currency: 'USD' },
-                // SUBTOTAL_PHASE adds shipping BEFORE tax, so tax applies to it.
-                // TOTAL_PHASE adds it after, leaving it untaxed. Which is correct
-                // varies by state, so the client chooses it in their portal.
+                // SUBTOTAL_PHASE adds shipping BEFORE tax; TOTAL_PHASE adds it
+                // after, leaving it untaxed. Which is correct varies by state,
+                // so the client chooses it in their portal.
                 calculation_phase: args.taxAppliesShipping ? 'SUBTOTAL_PHASE' : 'TOTAL_PHASE',
+                // AND it must be marked taxable. The phase alone only decides
+                // WHEN the charge is added — Square does not apply an
+                // order-scope tax to a service charge unless this is true. With
+                // it missing, our quote taxed shipping and Square's did not, so
+                // every taxed order with paid shipping charged a different
+                // amount than the customer was shown.
+                taxable: args.taxAppliesShipping,
               },
             ],
           }
