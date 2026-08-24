@@ -12,7 +12,7 @@ import { useEffect } from 'react'
  * DO NOT hand-edit this file in a client site. Run `npm run sync-ngf` instead —
  * local edits are overwritten and the version then lies about what the code does.
  */
-export const NGF_BRIDGE_VERSION = '1.2.0'
+export const NGF_BRIDGE_VERSION = '1.2.1'
 
 /**
  * NgfEditBridge — enables the NGF portal's live preview and click-to-edit.
@@ -358,6 +358,33 @@ export default function NgfEditBridge() {
     function isGalleryField(el: HTMLElement) {
       return el.getAttribute('data-ngf-type') === 'gallery'
     }
+
+      /**
+       * Read a gallery back OUT of the DOM, as the same JSON array that
+       * applyGalleryState() consumes.
+       *
+       * Traversal MIRRORS applyGalleryState deliberately: one tile is one DIRECT
+       * child, and its photo is the first <img> within it. The obvious
+       * alternative — querySelectorAll('img') across the whole container —
+       * agrees only while every tile holds exactly one image. Give a tile a
+       * photo plus an icon, or a <picture> with several sources, and it reports
+       * six photos for three tiles; saving that back then builds six tiles. A
+       * reader and a writer that disagree about what a tile is will corrupt the
+       * thing they describe.
+       *
+       * Empty means "restore the server-rendered default", same as every other
+       * field type here.
+       */
+      function readGalleryState(container: HTMLElement): string {
+        const urls: string[] = []
+        Array.from(container.children).forEach(child => {
+          const el = child as HTMLElement
+          const img = (el.tagName === 'IMG' ? el : el.querySelector('img')) as HTMLImageElement | null
+          const src = img?.getAttribute('src')?.trim()
+          if (src) urls.push(src)
+        })
+        return urls.length ? JSON.stringify(urls) : ''
+      }
 
     /**
      * Live-preview a gallery: the value is a JSON array of image URLs held in one
@@ -1040,12 +1067,19 @@ export default function NgfEditBridge() {
         if (dot > -1) {
           const isImg = isImageField(fieldEl)
           const isToggle = isToggleField(fieldEl)
+          const isGallery = isGalleryField(fieldEl)
           const ngfType = fieldEl.getAttribute('data-ngf-type') || (isImg ? 'image' : 'text')
           editTarget = {
             section:   attr.substring(0, dot),
             field:     attr.substring(dot + 1),
             value:     isImg
               ? (fieldEl.getAttribute('src') ?? '')
+              // A gallery is annotated on the CONTAINER, so without this branch
+              // it falls through to textContent — empty for a box of <img> — and
+              // the portal opens its gallery editor showing zero photos while
+              // the tiles are plainly on screen.
+              : isGallery
+              ? readGalleryState(fieldEl)
               : isToggle
               ? (fieldEl.dataset.ngfHidden === 'true' ? 'false' : '')
               : (fieldEl.textContent?.trim() ?? ''),

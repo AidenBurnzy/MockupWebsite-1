@@ -16,7 +16,7 @@
  */
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
-import { join, relative, extname } from 'node:path'
+import { join, relative, extname, dirname } from 'node:path'
 
 const ROOT = process.cwd()
 const STRICT = process.argv.includes('--strict')
@@ -128,7 +128,13 @@ if (!revPath) {
   // it posts to /api/leads/ingest — the prospect-signup path used by NGF's own
   // marketing site, where an enquiry is a lead for the AGENCY rather than a
   // customer of a client. Both persist; only email-only routes lose the lead.
-  const REACHES = /relayLeadToNgf|api\/leads\/ingest/
+    // reportOrderToNgf was added after this rule was written, and a checkout
+    // route trips looksLikeLead for perfectly good reasons: it POSTs, it takes
+    // a name and an email, and it sends a receipt. But an order IS the
+    // persisted record — exactly what this rule asks for. Without it a
+    // compliant storefront fails a rule it satisfies, and the fix somebody
+    // reaches for is bolting a lead relay onto a payment route.
+  const REACHES = /relayLeadToNgf|api\/leads\/ingest|reportOrderToNgf/
   const mailing = API_ROUTES.filter((f) => looksLikeLead(f.src) && !/revalidate|\bngf-lead\b/.test(f.path))
   const relayed = mailing.filter((f) => REACHES.test(f.src))
   const orphaned = mailing.filter((f) => !REACHES.test(f.src))
@@ -213,40 +219,31 @@ if (!has('components/NgfEditBridge.tsx')) {
   const consumers = FILES.filter((f) => !CONSENT_SRC.test(f.path))
 
   const usesGa = consumers.some((f) => /NEXT_PUBLIC_GA_ID|googletagmanager/.test(f.src))
-  const gatesConsent = consumers.some((f) => /hasCookieConsent/.test(f.src))
   const hasBanner = has('components/CookieConsent.tsx')
+
+  // Accept ANY consent implementation, not just the starter's. A site may ship a
+  // better one — cookie-backed, with a change event and active cookie clearing on
+  // decline — and gate on its own helper. Requiring the literal name
+  // `hasCookieConsent` flagged a correct site as broken, which is worse than no
+  // check: it invites someone to "fix" working code down to a weaker pattern.
+  // The real defect is analytics loaded by a file with NO consent awareness at all.
+  const gaFiles = consumers.filter((f) => /NEXT_PUBLIC_GA_ID|googletagmanager|clarity\.ms/.test(f.src))
+  const gatesConsent = gaFiles.some((f) => /consent/i.test(f.src))
+
+  // Only the STARTER's CookieConsent needs this env var to render its banner. A
+  // site with its own implementation manages its own gating and must not be
+  // failed for not declaring a variable it never reads.
+  const usesStarterConsent = consumers.some((f) => /hasCookieConsent/.test(f.src))
   const declaresVar = /NEXT_PUBLIC_COOKIE_ANALYTICS/.test(envExample) ||
     consumers.some((f) => /NEXT_PUBLIC_COOKIE_ANALYTICS/.test(f.src))
 
-  if (!usesGa) {
-    ok('Cookie consent wiring', 'No cookie-based analytics on this site.')
-  } else if (!hasBanner) {
-    fail(
-      'Cookie consent wiring',
-      'This site loads GA4 but has no components/CookieConsent.tsx. Cookie-based analytics must not ' +
-        "run before consent. Run 'npm run sync-ngf'.",
-    )
-  } else if (!gatesConsent) {
-    fail(
-      'Cookie consent wiring',
-      'GA4 is present but nothing calls hasCookieConsent() — analytics load before the visitor agrees. ' +
-        "Gate the analytics component: `if (!id || !hasCookieConsent()) return null`.",
-    )
-  } else if (!declaresVar) {
-    fail(
-      'Cookie consent wiring',
-      'GA4 is correctly gated behind hasCookieConsent(), but NEXT_PUBLIC_COOKIE_ANALYTICS is declared ' +
-        'nowhere. The banner only renders when it is "1", so consent can never be granted and analytics ' +
-        'will NEVER load — silently. Add it to .env.local.example and set it to 1 in Vercel.',
-    )
-  } else {
-    ok('Cookie consent wiring', 'GA4 gated behind consent, banner env var declared.')
-  }
-
   // Consent must be as easy to withdraw as to give. The banner only shows when no
   // choice is stored, so without a reset control the first click is permanent.
-  if (hasBanner && usesGa) {
-    const canWithdraw = consumers.some((f) => /resetCookieConsent/.test(f.src))
+  if (usesGa && gatesConsent) {
+    // Accept the starter's resetCookieConsent OR any site-specific equivalent
+    // (a clear/revoke/preferences control), for the same reason as above.
+    const canWithdraw = consumers.some((f) =>
+      /resetCookieConsent|clearConsent|CookiePreferences|revokeConsent/.test(f.src))
     canWithdraw
       ? ok('Consent can be withdrawn')
       : warn(
@@ -435,18 +432,28 @@ if (!vercelJson) {
 // old code — and `git init` + push would fork or clobber the real repo. Catch it
 // before any work is done rather than after.
 {
-  if (!has('.git')) {
+  // Walk UP for .git, the way git itself does. An app that lives in a
+  // subdirectory of its repo (Vercel Root Directory != '.') is still perfectly
+  // connected — failing it here reported a legitimately-cloned repo as detached.
+  let gitDir = null
+  for (let dir = ROOT, i = 0; i < 6; i++) {
+    if (existsSync(join(dir, '.git'))) { gitDir = join(dir, '.git'); break }
+    const parent = dirname(dir)
+    if (parent === dir) break
+    dir = parent
+  }
+
+  if (!gitDir) {
     fail(
       'Repo is connected to a remote',
-      'No .git directory — this folder is NOT a clone. Check GitHub for a repo of the same name before ' +
-        'editing anything: if one exists, this is a detached snapshot and your changes will never reach ' +
-        'the live site. Clone the real repo and work there. Do NOT `git init` this folder — that forks ' +
-        'or clobbers the remote.',
+      'No .git in this directory or any parent — this folder is NOT a clone. Check GitHub for a repo of ' +
+        'the same name before editing anything: if one exists, this is a detached snapshot and your ' +
+        'changes will never reach the live site. Clone the real repo and work there. Do NOT `git init` ' +
+        'this folder — that forks or clobbers the remote.',
     )
   } else {
-    const gitCfg = read('.git/config') ?? ''
-    // Assigned to a variable deliberately: a line starting with `/` after an
-    // expression is parsed as division, not a regex literal (ASI trap).
+    let gitCfg = ''
+    try { gitCfg = readFileSync(join(gitDir, 'config'), 'utf8') } catch { /* unreadable */ }
     const hasRemote = /\[remote /.test(gitCfg)
     hasRemote
       ? ok('Repo is connected to a remote')

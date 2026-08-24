@@ -6,8 +6,14 @@ This repo was scaffolded from `ngf-client-starter` and converted from a plain HT
 
 The universal foundation for every NGF client website is:
 
-- **In-repo copy:** `NGF-STANDARDS.md` (this repo)
-- **Canonical source:** `NorthCoveBuilders-Mockup/NGF-STANDARDS.md` (if this copy is stale)
+- **Canonical source — always fetch this, never keep a copy:**
+  https://raw.githubusercontent.com/Nick-NGFsystems/ngf-client-starter/main/NGF-STANDARDS.md
+
+This repo used to carry its own `NGF-STANDARDS.md`. It has been deleted: it was
+frozen at this site's initial build while the canonical doc kept moving, so it
+was stale by definition and `npm run doctor` fails a fork that keeps one. The
+old pointer here also named `NorthCoveBuilders-Mockup`, which is no longer the
+source.
 
 That doc has the full tech-stack rules, NGF editor integration spec, setup checklist, and known gotchas.
 
