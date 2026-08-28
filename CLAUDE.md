@@ -24,7 +24,7 @@ That doc has the full tech-stack rules, NGF editor integration spec, setup check
 ## Setup checklist
 
 - [ ] `npm install` (first time)
-- [ ] Set `NEXT_PUBLIC_SITE_URL` in Vercel env vars to the client's domain (e.g. `noma-jewelry.com`)
+- [ ] Set `NEXT_PUBLIC_SITE_URL` in Vercel env vars to the client's domain (`noelleandmary.com`)
 - [ ] Set `NGF_APP_URL` (optional — defaults to `https://app.ngfsystems.com`)
 - [ ] In the NGF admin portal, set this client's `site_url` field to match `NEXT_PUBLIC_SITE_URL` exactly
 - [ ] Deploy to Vercel
@@ -52,9 +52,9 @@ No database. No auth. Pure content site — all data comes from the NGF portal c
 | File | Purpose |
 |---|---|
 | `lib/ngf.ts` | `getNgfContent()` + `getItems()` — fetch published content from the NGF portal. Don't modify. |
-| `components/NgfEditBridge.tsx` | Bridge to the portal live editor. Don't modify in isolation — sync from NorthCove. |
+| `components/NgfEditBridge.tsx` | Bridge to the portal live editor. Canonical — never hand-edit; run `npm run sync-ngf` (source: `ngf-client-starter`). |
 | `app/layout.tsx` | Mounts NgfEditBridge, CartProvider, Header, Footer. Calls `getNgfContent()`. |
-| `next.config.ts` | CSP `frame-ancestors` header + image domain allowlist |
+| `next.config.ts` | Full security-header baseline in ONE CSP entry (frame-ancestors merged in) with Square's origins allowed + image domain allowlist |
 | `components/CartProvider.tsx` | localStorage cart state shared across components |
 | `lib/site-data.ts` | Hardcoded fallback data for products, bundles, reviews |
 
@@ -123,9 +123,12 @@ cp -r assets public/assets
 
 | Area | Status | Notes |
 |---|---|---|
-| Static assets | ⚠️ Not moved | `assets/` folder needs to be copied to `public/assets/` for logos to load |
-| `NEXT_PUBLIC_SITE_URL` | ⚠️ Not set | Must be set before the portal content API can deliver content |
-| NGF admin `site_url` | ⚠️ Not set | Set in admin → Clients → this client's config, must match NEXT_PUBLIC_SITE_URL |
-| Checkout | ❌ Not implemented | Cart is demo-only; no real payment processing |
-| Contact email | ⚠️ Placeholder | `hero.contactEmail` defaults to `mailto:hello@noma.com` — update via portal |
-| Product reviews | ⚠️ Placeholder | All review text is placeholder; swap via portal editor |
+| Static assets | ✅ Moved | `public/assets/` holds logos + product photos (30 files). |
+| Checkout | ✅ Built + sandbox-tested | Square Web Payments SDK at `/checkout`; `/api/checkout` re-prices server-side, creates a Square order, charges, then reports to the portal. A real sandbox order reached NOMA's portal. Needs production Square keys to take real money. |
+| `NEXT_PUBLIC_SITE_URL` | ⚠️ Points at the preview | Currently `noma-mockup.vercel.app` so testing resolves to the bound client. At launch this becomes `noelleandmary.com` **at the same time** as the NGF admin `site_url` — they must always match, and content + orders both break while they disagree. |
+| NGF admin `site_url` | ✅ Bound | Bound to the preview domain; retarget to `noelleandmary.com` at cutover. |
+| Store settings (shipping/tax) | ❌ Not configured | Nothing set in the portal's Store tab, so `quote()` falls back to zeroes — every order ships free and untaxed. Set before launch. |
+| Vercel env vars | ⚠️ Not set | `.env.local` does not deploy. All 11 vars from `.env.local.example` must exist in Vercel, and `NEXT_PUBLIC_*` before the build runs. |
+| Test orders | ⚠️ Present | Three test orders sit in NOMA's portal and look like real sales. Delete via the admin orders route before handover. |
+| Contact email | ⚠️ Placeholder | `hero.contactEmail` defaults to `mailto:hello@noma.com` — update via portal. |
+| Product reviews | ⚠️ Placeholder | All review text is placeholder; swap via portal editor. |
