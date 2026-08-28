@@ -90,13 +90,13 @@ export const metadata: Metadata = {
     title: 'NOMA Designs | Waterproof Fine Jewelry – Grand Rapids, MI',
     description:
       'Everyday waterproof fine jewelry designed to last. Gold necklaces, bracelets, rings & earrings — tarnish-free with custom engraving. Ships from Grand Rapids, MI.',
-    images: [{ url: '/assets/logos/noma-logo-v3.png', width: 597, height: 206, alt: 'NOMA Designs' }],
+    images: [{ url: '/assets/logos/noma-logo-v4-og.png', width: 1200, height: 630, alt: 'NOMA Designs' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'NOMA Designs | Waterproof Fine Jewelry',
     description: 'Everyday waterproof fine jewelry. Gold, silver & rose gold necklaces, bracelets, rings & earrings. Custom engraving available.',
-    images: ['/assets/logos/noma-logo-v3.png'],
+    images: ['/assets/logos/noma-logo-v4-og.png'],
   },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
 }
@@ -111,7 +111,7 @@ const jsonLd = {
       url: 'https://www.noelleandmary.com',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://www.noelleandmary.com/assets/logos/noma-logo-v3.png',
+        url: 'https://www.noelleandmary.com/assets/logos/noma-logo-v4-og.png',
       },
       description:
         'Everyday waterproof fine jewelry — gold necklaces, bracelets, rings, earrings, and custom engraving. Based in Grand Rapids, Michigan.',
@@ -135,7 +135,7 @@ const jsonLd = {
       '@id': 'https://www.noelleandmary.com/#store',
       name: 'NOMA Designs',
       url: 'https://www.noelleandmary.com',
-      image: 'https://www.noelleandmary.com/assets/logos/noma-logo-v3.png',
+      image: 'https://www.noelleandmary.com/assets/logos/noma-logo-v4-og.png',
       description:
         'Waterproof fine jewelry — necklaces, bracelets, rings, earrings in 14k gold, sterling silver, and rose gold. Custom engraving available. Based in Grand Rapids, MI.',
       address: {

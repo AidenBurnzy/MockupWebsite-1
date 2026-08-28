@@ -181,7 +181,7 @@ export function Header({ announcementText }: HeaderProps) {
           <Link href="/" className="flex items-center gap-3 shrink-0 brand-link">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/assets/logos/noma-logo-v3.png"
+              src="/assets/logos/noma-logo-v4.png"
               alt="NOMA Designs"
               className="brand-logo"
             />
