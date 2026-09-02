@@ -125,10 +125,10 @@ cp -r assets public/assets
 |---|---|---|
 | Static assets | ✅ Moved | `public/assets/` holds logos + product photos (30 files). |
 | Checkout | ✅ Built + sandbox-tested | Square Web Payments SDK at `/checkout`; `/api/checkout` re-prices server-side, creates a Square order, charges, then reports to the portal. A real sandbox order reached NOMA's portal. Needs production Square keys to take real money. |
-| `NEXT_PUBLIC_SITE_URL` | ⚠️ Points at the preview | Currently `noma-mockup.vercel.app` so testing resolves to the bound client. At launch this becomes `noelleandmary.com` **at the same time** as the NGF admin `site_url` — they must always match, and content + orders both break while they disagree. |
-| NGF admin `site_url` | ✅ Bound | Bound to the preview domain; retarget to `noelleandmary.com` at cutover. |
+| `NEXT_PUBLIC_SITE_URL` | ✅ Correct locally / ⚠️ absent in Vercel | `noelleandmary.com` in `.env.local`, matching the portal binding. NOT set in Vercel, so the deployed site falls back to `VERCEL_PROJECT_PRODUCTION_URL` (`noma-mockup.vercel.app`), which resolves to no client — the deploy currently ignores all published content and would refuse orders. |
+| NGF admin `site_url` | ✅ `noelleandmary.com` | Both apex and `www` resolve to client `cmrkupuik0001…` with 19 published keys. `noma-mockup.vercel.app` resolves to nothing — anything still pointing there is silently broken. |
 | Store settings (shipping/tax) | ❌ Not configured | Nothing set in the portal's Store tab, so `quote()` falls back to zeroes — every order ships free and untaxed. Set before launch. |
 | Vercel env vars | ⚠️ Not set | `.env.local` does not deploy. All 11 vars from `.env.local.example` must exist in Vercel, and `NEXT_PUBLIC_*` before the build runs. |
-| Test orders | ⚠️ Present | Three test orders sit in NOMA's portal and look like real sales. Delete via the admin orders route before handover. |
+| Test orders | ⚠️ Present | Sandbox test orders sit in NOMA's portal looking like real sales — delete via the admin orders route before handover. Counts have differed between the portal view and a direct DB query, so check the portal itself rather than trusting a remembered number. |
 | Contact email | ⚠️ Placeholder | `hero.contactEmail` defaults to `mailto:hello@noma.com` — update via portal. |
 | Product reviews | ⚠️ Placeholder | All review text is placeholder; swap via portal editor. |
